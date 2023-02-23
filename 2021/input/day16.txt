@@ -1,8 +1,8 @@
-Valve AA has flow rate=0; tunnels lead to valves NV, YY, GC, IS, QO
-Valve JZ has flow rate=0; tunnels lead to valves IR, LY
 Valve KD has flow rate=0; tunnels lead to valves NJ, ZS
 Valve VW has flow rate=0; tunnels lead to valves IT, VH
 Valve HS has flow rate=0; tunnels lead to valves OC, PN
+Valve AA has flow rate=0; tunnels lead to valves NV, YY, GC, IS, QO
+Valve JZ has flow rate=0; tunnels lead to valves IR, LY
 Valve EU has flow rate=19; tunnel leads to valve GQ
 Valve XF has flow rate=0; tunnels lead to valves WL, QD
 Valve DD has flow rate=8; tunnels lead to valves GQ, YY, JV, SK
