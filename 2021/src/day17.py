@@ -1,3 +1,388 @@
+import os
+import time
+from copy import deepcopy
+
+import numpy as np
+
+class Piece:
+    def __init__(self, left, bottom, index, jet):
+        self.left = left
+        self.bottom = bottom
+        self.index = index
+        self.jet = jet
+
+
+    def move_h(self, board, dir, w):
+        pass
+
+    def move_v(self, board, h):
+        pass
+
+    def stick(self, board, top):
+        pass
+
+class DownPiece (Piece):
+    def __init__(self, left, bottom, index, jet):
+        super().__init__(left, bottom, index, jet)
+
+    def move_h(self, board, dir, w):
+        if dir == -1:
+            if self.left > 0 and board[self.bottom][self.left-1] == 0:
+                self.left-=1
+                return True
+        else:
+            if self.left+4 < w and board[self.bottom][self.left+4] == 0:
+                self.left+=1
+                return True
+        return False
+
+    def move_v(self, board, h):
+        if self.bottom+1 < h:
+            for a in range(self.left, self.left + 4):
+                if board[self.bottom+1][a] != 0:
+                    return False
+            self.bottom+=1
+            return True
+        else:
+            return False
+
+    def stick(self, board, top):
+        for a in range(self.left, self.left + 4):
+            board[self.bottom][a] = 1
+            if top[a] > self.bottom -1:
+                top[a] = self.bottom-1
+        return board, top
+
+    def __repr__(self):
+        return f"- {self.bottom},{self.left}"
+
+class PlusPiece (Piece):
+    def __init__(self, left, bottom, index, jet):
+        super().__init__(left, bottom, index, jet)
+
+    def move_h(self, board, dir, w):
+        if dir == -1:
+            if self.left > 0 and board[self.bottom - 1][self.left-1] == 0 \
+                    and board[self.bottom][self.left] == 0 \
+                    and board[self.bottom-2][self.left] == 0:
+                self.left-=1
+                return True
+        else:
+            if self.left+3 < w and board[self.bottom - 1][self.left+3] == 0 \
+                    and board[self.bottom][self.left+2] == 0 \
+                    and board[self.bottom-2][self.left+2] == 0:
+                self.left+=1
+                return True
+        return False
+
+    def move_v(self, board, h):
+        if self.bottom+1 < h:
+            if board[self.bottom][self.left] == 0 and board[self.bottom][self.left+2] == 0 \
+                    and board[self.bottom+1][self.left+1] == 0:
+                self.bottom+=1
+                return True
+        return False
+
+    def stick(self, board, top):
+        board[self.bottom - 1][self.left] = 2
+        board[self.bottom - 1][self.left + 1] = 2
+        board[self.bottom - 1][self.left + 2] = 2
+        board[self.bottom][self.left + 1] = 2
+        board[self.bottom - 2][self.left + 1] = 2
+        if top[self.left] > self.bottom-2:
+            top[self.left] = self.bottom - 2
+        if top[self.left+2] > self.bottom-2:
+            top[self.left+2] = self.bottom - 2
+        if top[self.left+1] > self.bottom-3:
+            top[self.left+1] = self.bottom - 3
+
+        return board, top
+
+    def __repr__(self):
+        return f"+ {self.bottom},{self.left}"
+
+class IPiece (Piece):
+    def __init__(self, left, bottom, index, jet):
+        super().__init__(left, bottom, index, jet)
+
+    def move_h(self, board, dir, w):
+        if dir == -1:
+            if self.left > 0:
+                for i in range(self.bottom-3, self.bottom+1):
+                    if board[i][self.left-1] != 0:
+                        return False
+                self.left-=1
+                return True
+        else:
+            if self.left+1 < w:
+                for i in range(self.bottom - 3, self.bottom + 1):
+                    if board[i][self.left+1] != 0:
+                        return False
+                self.left+=1
+                return True
+        return False
+
+    def move_v(self, board, h):
+        if self.bottom+1 < h:
+            if board[self.bottom+1][self.left] == 0:
+                self.bottom += 1
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def stick(self, board, top):
+        for a in range(self.bottom-3, self.bottom+1):
+            board[a][self.left] = 4
+        if top[self.left] > self.bottom - 4:
+            top[self.left] = self.bottom - 4
+        return board, top
+    def __repr__(self):
+        return f"| {self.bottom},{self.left}"
+
+class SquarePiece (Piece): #5
+    def __init__(self, left, bottom, index, jet):
+        super().__init__(left, bottom, index, jet)
+
+    def move_h(self, board, dir, w):
+        if dir == -1:
+            if self.left > 0 and board[self.bottom][self.left-1] == 0 \
+                        and board[self.bottom-1][self.left-1] == 0:
+                self.left-=1
+                return True
+        else:
+            if self.left+2 < w and board[self.bottom][self.left+2] == 0 \
+                    and board[self.bottom-1][self.left+2] == 0:
+                self.left+=1
+                return True
+        return False
+
+    def move_v(self, board, h):
+        if self.bottom+1 < h and board[self.bottom+1][self.left] == 0 \
+                and board[self.bottom+1][self.left+1] == 0:
+            self.bottom += 1
+            return True
+        else:
+            return False
+
+    def stick(self, board, top):
+        board[self.bottom][self.left] = 5
+        board[self.bottom][self.left+1] = 5
+        board[self.bottom-1][self.left] = 5
+        board[self.bottom-1][self.left+1] = 5
+        if top[self.left] > self.bottom - 2:
+            top[self.left] = self.bottom - 2
+        if top[self.left+1] > self.bottom - 2:
+            top[self.left+1] = self.bottom - 2
+        return board, top
+    def __repr__(self):
+        return f"o {self.bottom},{self.left}"
+
+class LPiece (Piece): #3
+    def __init__(self, left, bottom, index, jet):
+        super().__init__(left, bottom, index, jet)
+
+    def move_h(self, board, dir, w):
+        #print(dir)
+        if dir == -1:
+            #print(f"{self.left > 0} {board[self.bottom][self.left-1] == 0} {board[self.bottom-1][self.left+1] == 0} {board[self.bottom-2][self.left+1] == 0}")
+            if self.left > 0 and board[self.bottom][self.left-1] == 0 \
+                        and board[self.bottom-1][self.left+1] == 0 \
+                        and board[self.bottom-2][self.left+1] == 0:
+                self.left-=1
+                return True
+        else:
+            if self.left+3 < w and board[self.bottom][self.left+3] == 0 \
+                    and board[self.bottom-1][self.left+3] == 0\
+                    and board[self.bottom-2][self.left+3] == 0:
+                self.left+=1
+                return True
+        return False
+
+    def move_v(self, board, h):
+        if self.bottom+1 < h and board[self.bottom+1][self.left] == 0 \
+                and board[self.bottom+1][self.left+1] == 0 \
+                and board[self.bottom+1][self.left+2] == 0:
+            self.bottom += 1
+            return True
+        else:
+            return False
+
+    def stick(self, board, top):
+        board[self.bottom][self.left] = 3
+        board[self.bottom][self.left+1] = 3
+        board[self.bottom][self.left+2] = 3
+        board[self.bottom-1][self.left+2] = 3
+        board[self.bottom-2][self.left+2] = 3
+        if top[self.left] > self.bottom - 1:
+            top[self.left] = self.bottom - 1
+        if top[self.left+1] > self.bottom - 1:
+            top[self.left+1] = self.bottom - 1
+        if top[self.left+2] > self.bottom - 3:
+            top[self.left+2] = self.bottom - 3
+        return board, top
+
+    def __repr__(self):
+        return f"L {self.bottom},{self.left}"
+
+
+def createPiece(ord_index, symbol, y_bot, jet):
+    if symbol == "-":
+        return DownPiece(2, y_bot, ord_index, jet)
+    elif symbol == "+":
+        return PlusPiece(2, y_bot, ord_index, jet)
+    elif symbol == "L":
+        return LPiece(2, y_bot, ord_index, jet)
+    elif symbol == "|":
+        return IPiece(2, y_bot, ord_index, jet)
+    elif symbol == "o":
+        return SquarePiece(2, y_bot, ord_index, jet)
+    else:
+        raise Exception()
+
+
+def print_and_clear(msg: str, delay=0.05):
+    print(msg)
+    time.sleep(delay)
+    cls()
+
+
+def cls():
+    """ Clear console """
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def newPart2(input):
+    pieces = []
+    h = 2000000*4
+    w = 7
+
+    top = [h-1 for x in range(w)]
+
+    board = np.zeros((h,w),dtype=np.int8)
+
+    jet = 0
+    ord_index = 0
+    order = ["-", "+", "L", "|", "o"]
+    np.set_printoptions(threshold=np.inf)
+    verify=-1
+    for it in range(100000):
+        piece = createPiece(ord_index, order[ord_index % len(order)], min(top) -3, jet)
+        if verify!= -1:
+            print(f"NEW {it} jet: {jet % len(input)} {input[jet % len(input)]}")
+            #v = deepcopy(board)
+            #v, _ = piece.stick(v, [0 for i in range(w)])
+            #print(v[-30:][:])
+            #print("----------")
+        stop = False
+        while not stop:
+            piece.move_h(board,input[jet%len(input)],w)
+            if it == verify:
+                print(f"{jet%len(input)} {input[jet%len(input)]}")
+                v = deepcopy(board)
+                v,_ = piece.stick(v,[0 for i in range(w)])
+                print(v[-30:][:])
+                print("----------")
+            can_go_down = piece.move_v(board,h)
+            #print(f"{can_go_down} + {piece.bottom} {piece}")
+            if it == verify:
+                print(f"{jet % len(input)} {input[jet % len(input)]} DOWN {can_go_down}")
+                v = deepcopy(board)
+                v, _ = piece.stick(v, [0 for i in range(w)])
+                print(v[-30:][:])
+                print("----------")
+
+            if not can_go_down:
+                pieces.append(piece)
+                board, top = piece.stick(board,top)
+                stop = True
+            if it == verify and stop:
+                print(f"{stop}")
+                v = deepcopy(board)
+                v,_ = piece.stick(v,[0 for i in range(w)])
+                print(v[-30:][:])
+                print("----------")
+
+
+            jet += 1
+        #print(top)
+        #print(board[-20:][:])
+        #print("----------")
+        ord_index+=1
+
+    print(board)
+    print(top)
+    print(min(top))
+    print(h-min(top)-1)
+
+    aux = deepcopy(board)
+    wind_y_bot = h
+    print(top)
+    print(f"max height {max_height(top)}")
+    print(range(h-int(max_height(top)/2), h))
+    found = False
+    window_size = 0
+
+    for i in range(10000, 100000):
+        for bot in range(h-int(max_height(top)/2), h).__reversed__():
+            """
+            print(aux[bot-i:bot][:])
+            print(f"?? {bot-i} {bot}")
+            print(aux[bot-(2*i):bot-i][:])
+            print(f"??? {bot-(2*i)} {bot-i}")
+            print(aux[bot-i:bot][:] == aux[bot-(2*i):bot-i][:].all())
+            exit()
+            """
+
+            if (aux[bot-i:bot][:] == aux[bot-(2*i):bot-i][:]).all():
+                print(aux[bot-i:bot][:])
+                print(f"bot {bot} h {h} {len(aux[bot-i:bot][:])}")
+                found = True
+                wind_y_bot = bot
+                window_size = i
+                break
+        if found:
+            break
+
+    print(f"window size {window_size}")
+    r = 1000000000000
+    pieces_pattern, dic_pattern = pieces_in(aux[wind_y_bot-window_size:wind_y_bot][:], w)
+    height_before_pattern = h-wind_y_bot
+    pieces_bef_pattern, dic_bef_pattern = pieces_in(aux[wind_y_bot:][:], w)
+    amt_times_pattern_repeats = int((r-pieces_bef_pattern)/pieces_pattern)
+    repeated_in_pattern = amt_times_pattern_repeats*pieces_pattern
+    after_pattern = r - pieces_bef_pattern - repeated_in_pattern
+
+    print(f"{(r-pieces_bef_pattern)/pieces_pattern}\n"
+          f"pieces_bef_pattern {pieces_bef_pattern}\n"
+          f"pieces in pattern {pieces_pattern} : {dic_pattern}")
+    print(f"amt_times_pattern_repeats{amt_times_pattern_repeats}\n in pattern: {repeated_in_pattern} "
+          f"outside: {after_pattern}")
+    if after_pattern == 0:
+        print((window_size * amt_times_pattern_repeats)+height_before_pattern)
+    else:
+        s = newPart1(input, pieces_bef_pattern+after_pattern+pieces_pattern)
+        print(f"s {s} {s + ((repeated_in_pattern - pieces_pattern)*window_size)}")
+
+
+def pieces_in(board,w):
+    dic = {1:0,2:0,3:0,4:0,5:0}
+
+    for i in range(len(board)):
+        for j in range(w):
+            if board[i][j] != 0:
+                dic[board[i][j]] +=1
+    dic[1] = int(dic[1] / 4)
+    dic[2] = int(dic[2] / 5)
+    dic[3] = int(dic[3] / 5)
+    dic[4] = int(dic[4] / 4)
+    dic[5] = int(dic[5] / 4)
+    return sum(dic.values()),dic
+
+
+def max_height(top):
+    return min(top)
+
 
 def main():
     input = None
@@ -10,9 +395,76 @@ def main():
     h = 2022*4
     w = 7
 
-    #print(f"Part 1: {part1(w, h, input)}")
-    part2(w, h, input)
 
+    #print(f"Part 1: {part1(w, h, input)}")
+    #part2(w, h, input)
+    #newPart1(input)
+    newPart2(input)
+
+def newPart1(input,quant_pieces = 2022):
+    pieces = []
+    h = 2022*4
+    w = 7
+
+    top = [h-1 for x in range(w)]
+
+    board = np.zeros((h,w),dtype=np.int8)
+
+    jet = 0
+    ord_index = 0
+    order = ["-", "+", "L", "|", "o"]
+    np.set_printoptions(threshold=np.inf)
+    verify=-1
+
+    for it in range(quant_pieces):
+        piece = createPiece(ord_index, order[ord_index % len(order)], min(top) -3, jet)
+        if verify!= -1:
+            print(f"NEW {jet % len(input)} {input[jet % len(input)]}")
+            v = deepcopy(board)
+            v, _ = piece.stick(v, [0 for i in range(w)])
+            print(v[-30:][:])
+            print("----------")
+        stop = False
+        while not stop:
+            piece.move_h(board,input[jet%len(input)],w)
+            if it == verify:
+                print(f"{jet%len(input)} {input[jet%len(input)]}")
+                v = deepcopy(board)
+                v,_ = piece.stick(v,[0 for i in range(w)])
+                print(v[-30:][:])
+                print("----------")
+            can_go_down = piece.move_v(board,h)
+            #print(f"{can_go_down} + {piece.bottom} {piece}")
+            if it == verify:
+                print(f"{jet % len(input)} {input[jet % len(input)]} DOWN {can_go_down}")
+                v = deepcopy(board)
+                v, _ = piece.stick(v, [0 for i in range(w)])
+                print(v[-30:][:])
+                print("----------")
+
+            if not can_go_down:
+                pieces.append(piece)
+                board, top = piece.stick(board,top)
+                stop = True
+            if it == verify and stop:
+                print(f"{stop}")
+                v = deepcopy(board)
+                v,_ = piece.stick(v,[0 for i in range(w)])
+                print(v[-30:][:])
+                print("----------")
+
+
+            jet += 1
+        #print(top)
+        #print(board[-20:][:])
+        #print("----------")
+        ord_index+=1
+
+    print(board)
+    print(top)
+    print(min(top))
+    print(h-min(top)-1)
+    return h-min(top)-1
 
 def part2(w, h, input):
     h = 100000 * 4
